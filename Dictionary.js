@@ -30,7 +30,7 @@ class Dictionary {
                 this.processLines(fileContent, processLine);    // Xử lý từng dòng dữ liệu
             }
         } catch (error) {
-            console.error('Error reading dictionary file:', error);
+            console.error('Lỗi đọc file từ điển:', error);
         }
     }
 
@@ -85,81 +85,101 @@ class Dictionary {
         return node.isEndOfWord ? node.translation : null;
     }
 
-    // Phương thức dịch một đoạn văn bản từ tiếng Trung sang tiếng Việt
+    /**
+     * Phương thức dịch một đoạn văn bản từ tiếng Trung sang tiếng Việt.
+     * @param {string} text - Đoạn văn bản cần dịch.
+     * @returns {string} - Kết quả dịch.
+     */
     translate(text) {
-        // Chuyển đổi dấu câu Trung Quốc sang chữ La-tinh
-        const convertPunctuation = this.convertChinesePunctuationToLatin(text);
-        // Phân tách văn bản thành các từ và dịch chúng
-        const splitText = this.splitTextWithTrie(convertPunctuation);
-        // Dịch từng từ và lọc bỏ một số từ không cần thiết
+        // Bước 1: Chuyển đổi dấu câu Trung Quốc sang chữ La-tinh
+        const convertPunctuation = this.convertPunctuation(text);
+
+        // Bước 2: Phân tách văn bản thành các từ và lọc bỏ từ không cần thiết
+        const splitText = this.tokenize(convertPunctuation)
+            .filter(word => word !== '的' && word !== '了' && word !== '著');
+
+        // Bước 3: Dịch từng từ và lọc bỏ một số từ không cần thiết
         const translations = splitText.map(word => {
+            // Bước 3.1: Kiểm tra từ điển tên
             const translatedName = this.namesDictionary.get(word);
             if (translatedName !== undefined) {
                 // Nếu có nhiều nghĩa, lấy nghĩa đầu tiên
                 const firstMeaning = translatedName.split('/')[0];
                 return firstMeaning;
             } else {
+                // Bước 3.2: Tìm kiếm từ nếu không có trong từ điển tên
                 const searchResult = this.search(word);
                 return searchResult ? searchResult.split('/')[0] : word;
             }
-        }).filter(word => word !== '的' && word !== '了' && word !== '著')
-          .map(word => this.phienAmDictionary.get(word) || word);
+        })
+        .map(word => this.phienAmDictionary.get(word) || word); // Bước 3.3: Ánh xạ từ sang phiên âm nếu có
 
-        // Xử lý văn bản và trả về kết quả dịch
+        // Bước 4: Xử lý văn bản và trả về kết quả dịch
         return this.processText(translations.join(' '));
     }
 
-    // Phương thức phân tách văn bản thành các từ sử dụng cây Trie
-    splitTextWithTrie(text) {
-        const output = [];
-        let currentIndex = 0;
-        const trieRoot = this.root;
-        let tempString = '';
+    /**
+     * Tách văn bản thành các từ sử dụng một trie.
+     * @param {string} text - Văn bản cần tách.
+     * @returns {string[]} - Mảng chứa các từ đã tách.
+     */
+    tokenize(text) {
+      const output = [];         // Mảng chứa kết quả sau khi tách
+      let currentIndex = 0;      // Vị trí hiện tại trong văn bản
 
-        // Duyệt qua từng ký tự trong văn bản
-        while (currentIndex < text.length) {
-            let currentNode = trieRoot;
-            let lastFoundIndex = -1;
+      while (currentIndex < text.length) {
+        let currentNode = this.root;  // Bắt đầu từ nút gốc của trie
+        let lastFoundIndex = -1;      // Vị trí cuối cùng của từ đã tìm thấy
 
-            // Duyệt qua các ký tự từ vị trí hiện tại đến hết văn bản
-            for (let i = currentIndex; i < text.length; i++) {
-                const char = text[i];
-                if (currentNode.children.has(char)) {
-                    currentNode = currentNode.children.get(char);
-                    if (currentNode.isEndOfWord) {
-                        lastFoundIndex = i;
-                    }
-                } else {
-                    break;
-                }
+        // Duyệt qua văn bản từ vị trí hiện tại
+        for (let i = currentIndex; i < text.length; i++) {
+          const char = text[i];
+
+          // Kiểm tra xem ký tự có trong trie không
+          if (currentNode.children.has(char)) {
+            currentNode = currentNode.children.get(char);
+
+            // Nếu đến cuối của một từ trong trie, lưu lại vị trí
+            if (currentNode.isEndOfWord) {
+              lastFoundIndex = i;
             }
-
-            // Nếu có từ được tìm thấy
-            if (lastFoundIndex !== -1) {
-                if (tempString !== '') {
-                    output.push(tempString);
-                    tempString = '';
-                }
-                output.push(text.substring(currentIndex, lastFoundIndex + 1));
-                currentIndex = lastFoundIndex + 1;
-            } else {
-                // Nếu là ký tự Trung Quốc, thêm vào đầu ra; nếu không, thêm vào một chuỗi tạm thời
-                if (this.isChineseCharacter(text[currentIndex])) {
-                    output.push(text[currentIndex]);
-                } else {
-                    tempString += text[currentIndex];
-                }
-                currentIndex++;
-            }
+          } else {
+            break;
+          }
         }
 
-        // Nếu chuỗi tạm thời không rỗng, thêm vào đầu ra
-        if (tempString !== '') {
-            output.push(tempString);
-        }
+        // Nếu tìm thấy từ trong trie
+        if (lastFoundIndex !== -1) {
+          // Thêm từ đã tìm thấy vào mảng kết quả
+          output.push(text.slice(currentIndex, lastFoundIndex + 1));
 
-        // Trả về mảng các từ đã phân tách
-        return output;
+          // Cập nhật vị trí hiện tại
+          currentIndex = lastFoundIndex + 1;
+        } else {
+          // Nếu là ký tự Trung Quốc
+          if (this.isChineseCharacter(text[currentIndex])) {
+            output.push(text[currentIndex]);
+            currentIndex++;
+          } else {
+            // Nếu không phải ký tự Trung Quốc và không có từ trong trie, ghép từ vào một biến tạm thời
+            let nonChineseWord = text[currentIndex];
+
+            // Lặp để ghép những từ liên tiếp không phải ký tự Trung Quốc
+            while (currentIndex + 1 < text.length && !this.isChineseCharacter(text[currentIndex + 1])) {
+              currentIndex++;
+              nonChineseWord += text[currentIndex];
+            }
+
+            // Thêm chuỗi từ không phải ký tự Trung Quốc vào kết quả
+            output.push(nonChineseWord);
+
+            // Cập nhật vị trí hiện tại
+            currentIndex++;
+          }
+        }
+      }
+
+      return output;
     }
 
     // Phương thức kiểm tra xem một ký tự có phải là ký tự Trung Quốc hay không
@@ -169,7 +189,7 @@ class Dictionary {
     }
 
     // Phương thức chuyển đổi dấu câu Trung Quốc sang chữ La-tinh
-    convertChinesePunctuationToLatin(text) {
+    convertPunctuation(text) {
         const mapping = {
             '。': '. ', '，': ', ', '、': ', ', '；': ';', '！': '!', '？': '?',
             '：': ': ', '（': '(', '）': ')', '〔': '[', '〕': ']', '【': '[',
