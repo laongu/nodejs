@@ -9,7 +9,7 @@
     <h1>VietPhrase App</h1>
     <form id="translationForm">
         <label for="textInput">Nhập văn bản tiếng Trung:</label>
-        <textarea id="textInput" name="text" rows="4" cols="50" required></textarea>
+        <textarea id="textInput" name="text" rows="20" style="width: 100%;" required></textarea>
         <button type="button" onclick="translateText()">Dịch</button>
     </form>
 
@@ -18,7 +18,7 @@
     <script>
         async function translateText() {
             const inputText = document.getElementById('textInput').value;
-            const response = await fetch('http://localhost:3000/translate', {
+            const response = await fetch('/translate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -26,7 +26,7 @@
                 body: JSON.stringify({ text: inputText }),
             });
             const data = await response.json();
-            document.getElementById('translationResult').innerText = `Kết quả dịch: ${data.translatedText}`;
+            document.getElementById('translationResult').innerText = data.translatedText;
         }
     </script>
 </body>

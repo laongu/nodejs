@@ -1,5 +1,3 @@
-const fs = require('fs').promises;
-
 // Định nghĩa một nút trong cây Trie
 class TrieNode {
     constructor() {
@@ -15,52 +13,6 @@ class Dictionary {
         this.root = new TrieNode();         // Nút gốc của cây Trie
         this.phienAmDictionary = new Map(); // Từ điển cho phụ âm
         this.cachedData = new Map();        // Cache dữ liệu từ tệp để tránh đọc lại nếu đã đọc rồi
-    }
-
-    // Phương thức đọc dữ liệu từ điển từ một tệp trực tuyến
-    async readDictionaryFile(fileName, processLine) {
-        try {
-            if (this.cachedData.has(fileName)) {
-                const cachedContent = this.cachedData.get(fileName);
-                this.processLines(cachedContent, processLine);
-            } else {
-                const fileContent = await fs.readFile(fileName, 'utf8'); // Đọc nội dung tệp
-                this.cachedData.set(fileName, fileContent);     // Lưu vào cache để sử dụng lại sau này
-                this.processLines(fileContent, processLine);    // Xử lý từng dòng dữ liệu
-            }
-        } catch (error) {
-            console.error('Lỗi đọc file từ điển:', error);
-        }
-    }
-
-    // Phương thức xử lý từng dòng dữ liệu từ điển
-    processLines(content, processLine) {
-        const lines = content.split('\n');
-        for (const line of lines) {
-            const [key, value] = line.split('=').map(item => item.trim());
-            processLine(key, value);
-        }
-    }
-
-    // Phương thức tải toàn bộ từ điển từ các nguồn khác nhau
-    async loadDictionaries() {
-        // Tải từ điển tên
-        const loadNames = this.readDictionaryFile('Names.txt', (key, value) => {
-            this.insert(key, value);
-        });
-
-        // Tải từ điển Việt-Trung
-        const loadVietPhrase = this.readDictionaryFile('VietPhrase.txt', (key, value) => {
-            this.insert(key, value);
-        });
-
-        // Tải từ điển phụ âm tiếng Trung
-        const loadChinesePhienAm = this.readDictionaryFile('ChinesePhienAmWords.txt', (key, value) => {
-            this.phienAmDictionary.set(key, value);
-        });
-
-        // Đợi cho đến khi tất cả các từ điển đã được tải xong
-        await Promise.all([loadNames, loadVietPhrase, loadChinesePhienAm]);
     }
 
     // Phương thức thêm một từ vào cây Trie
@@ -82,6 +34,53 @@ class Dictionary {
             if (!node) return null;
         }
         return node.isEndOfWord ? node.translation : null;
+    }
+
+    // Phương thức đọc dữ liệu từ điển từ một tệp trực tuyến
+    async readDictionaryFile(fileName, processLine) {
+        try {
+            if (this.cachedData.has(fileName)) {
+                const cachedContent = this.cachedData.get(fileName);
+                this.processLines(cachedContent, processLine);
+            } else {
+                const response = await fetch(fileName);         // Fetch dữ liệu từ tệp trực tuyến
+                const fileContent = await response.text();      // Đọc nội dung tệp
+                this.cachedData.set(fileName, fileContent);     // Lưu vào cache để sử dụng lại sau này
+                this.processLines(fileContent, processLine);    // Xử lý từng dòng dữ liệu
+            }
+        } catch (error) {
+            console.error('Lỗi đọc file từ điển:', error);
+        }
+    }
+
+    // Phương thức xử lý từng dòng dữ liệu từ điển
+    processLines(content, processLine) {
+        const lines = content.split('\n');
+        for (const line of lines) {
+            const [key, value] = line.split('=').map(item => item.trim());
+            processLine(key, value);
+        }
+    }
+
+    // Phương thức tải toàn bộ từ điển từ các nguồn khác nhau
+    async loadDictionaries() {
+        // Tải từ điển Names
+        const loadNames = this.readDictionaryFile('https://laongu.github.io/Names.txt', (key, value) => {
+            this.insert(key, value);
+        });
+
+        // Tải từ điển Việt-Trung
+        const loadVietPhrase = this.readDictionaryFile('https://laongu.github.io/VietPhrase.txt', (key, value) => {
+            this.insert(key, value);
+        });
+
+        // Tải từ điển phụ âm tiếng Trung
+        const loadChinesePhienAm = this.readDictionaryFile('https://laongu.github.io/ChinesePhienAmWords.txt', (key, value) => {
+            this.phienAmDictionary.set(key, value);
+        });
+
+        // Đợi cho đến khi tất cả các từ điển đã được tải xong
+        await Promise.all([loadNames, loadVietPhrase, loadChinesePhienAm]);
     }
 
     /**
@@ -218,10 +217,20 @@ class Dictionary {
         return finalResult;
     }
 
-    // Hàm tự gọi khởi tạo đối tượng Dictionary và thực hiện dịch văn bản
+    // Phương thức khởi tạo: Tải toàn bộ từ điển khi khởi tạo đối tượng
     async init() {
         await this.loadDictionaries();
     }
 }
 
-module.exports = { Dictionary };
+/*
+// Hàm tự gọi khởi tạo đối tượng Dictionary và thực hiện dịch văn bản
+(async () => {
+    const dictionary = new Dictionary();
+    await dictionary.init(); // Tải toàn bộ từ điển
+
+    const inputText = '老五真帅气';
+    const translatedText = dictionary.translate(inputText); // Dịch văn bản
+    console.log(translatedText); // In kết quả dịch ra console
+})();
+*/

@@ -7,7 +7,7 @@ const { Dictionary } = require('./Dictionary'); // Cập nhật đường dẫn 
 
 // Khởi tạo đối tượng từ điển và tải dữ liệu
 const dictionary = new Dictionary();
-dictionary.initialize().then(() => {
+dictionary.init().then(() => {
     console.log('Từ điển tải thành công');
 }).catch((error) => {
     console.error('Lỗi khi tải từ điển:', error);
