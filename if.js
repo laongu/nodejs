@@ -1,7 +1,7 @@
 const fs = require('fs');
 
-const inputFile = 'Names.txt';
-const outputFile = 'NamesFix.txt';
+const inputFile = 'VietPhrase.txt';
+const outputFile = 'VietPhraseFix.txt';
 const racFile = 'Rac.txt';
 
 fs.readFile(inputFile, 'utf8', (err, data) => {
@@ -47,10 +47,20 @@ fs.readFile(inputFile, 'utf8', (err, data) => {
           return;
         }
 
+
         if (!keyMap[trimmedKey]) {
           keyMap[trimmedKey] = modifiedValue;
           validLines.push(`${trimmedKey}=${modifiedValue}`);
         }
+/*
+        // Xoá chương trong vietphrase, nên để ở Names
+        if (!/(Chương|chương) \d+:?/.test(modifiedValue)) {
+          if (!keyMap[trimmedKey]) {
+            keyMap[trimmedKey] = modifiedValue;
+            validLines.push(`${trimmedKey}=${modifiedValue}`);
+          }
+        }
+*/
       }
     } else {
       console.warn(`Dòng không chứa dấu '=' không hợp lệ (Dòng ${lineNumber + 1}): ${line}`);
@@ -60,18 +70,18 @@ fs.readFile(inputFile, 'utf8', (err, data) => {
   const outputData = validLines.join('\n');
   fs.writeFile(outputFile, outputData, 'utf8', err => {
     if (err) {
-      console.error('Lỗi khi ghi tập tin VietPhraseFix.txt:', err);
+      console.error(`Lỗi khi ghi tập tin ${outputFile}:`, err);
       return;
     }
-    console.log('Đã lưu vào VietPhraseFix.txt');
+    console.log(`Đã lưu vào ${outputFile}`);
   });
 
   const racData = racLines.join('\n');
   fs.writeFile(racFile, racData, 'utf8', err => {
     if (err) {
-      console.error('Lỗi khi ghi tập tin Rac.txt:', err);
+      console.error(`Lỗi khi ghi tập tin ${racFile}:`, err);
       return;
     }
-    console.log('Đã lưu vào Rac.txt');
+    console.log(`Đã lưu vào ${racFile}`);
   });
 });
